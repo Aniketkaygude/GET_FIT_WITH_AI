@@ -1,0 +1,57 @@
+# cvzone package uses mediapipe packages
+import cv2
+import cvzone
+import numpy as np
+from cvzone.PoseModule import PoseDetector
+
+
+cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280.0)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720.0)
+
+detector =PoseDetector(detectionCon=0.7,trackCon=0.7)
+per = 0
+angle = 0
+color =(0,0,255)
+dir = 0
+sit_ups = 0
+
+while(True):
+    _,img= cap.read()
+    img=detector.findPose(img,draw=True) # this function detect the pose
+    lmlst,bbox = detector.findPosition(img,draw = False)
+    if lmlst:
+        #print(lmlst)
+        angle = detector.findAngle(img,23, 25, 27)  # this functions(i.e a1,a2 detect the landmarks)
+        #a2 = detector.findAngle(img,24, 26, 28)
+        per = np.interp(angle, (30, 170), (100, 0))
+        bar_value = np.interp(angle,(30,170),(60,60+300))
+
+        cv2.rectangle(img, (1210, int(bar_value)), (1210 + 30, 60 + 300), color, cv2.FILLED)
+        #cv2.rectangle(img,((x,y),(x+w,y+h),(color(0,255,0)),thicknes()
+        cv2.rectangle(img , (1210,60) , (1210+30 , 60+300 ) , (0,0,0), 3)
+        cvzone.putTextRect(img,f'{int(per)}%',(1210,400),1.2,2,colorT=(),colorR=color)
+        if per == 100:
+            if dir == 0 :
+                sit_ups = sit_ups + 0.5
+                dir = 1
+                color = (0,255,0)
+
+        elif per == 0 :
+            if dir == 1 :
+                sit_ups = sit_ups + 0.5
+                dir = 0
+                color = (0,255,0)
+        else:
+              color = (0, 0, 255)
+
+        cvzone.putTextRect(img ,f'squats : {str(int(sit_ups))}',(40,40),2,2,colorT=(255,255,255),colorR=(255,0,0),border=3,colorB=())
+    cv2.imshow('situps-counter',img)
+    if cv2.waitKey(1) == ord('q'):
+        break
+
+
+
+
+
+
