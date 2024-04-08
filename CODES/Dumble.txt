@@ -1,57 +1,95 @@
-# cvzone package uses mediapipe packages
 import cv2
+import time
 import cvzone
 import numpy as np
 from cvzone.PoseModule import PoseDetector
-
 
 cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280.0)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720.0)
 
-detector =PoseDetector(detectionCon=0.7,trackCon=0.7)
-per = 0
-angle = 0
-color =(0,0,255)
+detector = PoseDetector(detectionCon=0.5, trackCon=0.5)
+ptime = 0
+ctime = 0
+color = (0, 0, 255)
 dir = 0
-sit_ups = 0
+count = 0
+count_right = 0
+count_left = 0
+right_rep_completed = False
+left_rep_completed = False
 
-while(True):
-    _,img= cap.read()
-    img=detector.findPose(img,draw=True) # this function detect the pose
-    lmlst,bbox = detector.findPosition(img,draw = False)
+while True:
+    _, img = cap.read()
+    img = detector.findPose(img, draw=True)
+    lmlst, bbox = detector.findPosition(img, draw=False)
+
     if lmlst:
-        #print(lmlst)
-        angle = detector.findAngle(img,23, 25, 27)  # this functions(i.e a1,a2 detect the landmarks)
-        #a2 = detector.findAngle(img,24, 26, 28)
-        per = np.interp(angle, (30, 170), (100, 0))
-        bar_value = np.interp(angle,(30,170),(60,60+300))
+        a1 = detector.findAngle(img, 12, 14, 16)
+        a2 = detector.findAngle(img, 15, 13, 11)
 
-        cv2.rectangle(img, (1210, int(bar_value)), (1210 + 30, 60 + 300), color, cv2.FILLED)
-        #cv2.rectangle(img,((x,y),(x+w,y+h),(color(0,255,0)),thicknes()
-        cv2.rectangle(img , (1210,60) , (1210+30 , 60+300 ) , (0,0,0), 3)
-        cvzone.putTextRect(img,f'{int(per)}%',(1210,400),1.2,2,colorT=(),colorR=color)
-        if per == 100:
-            if dir == 0 :
-                sit_ups = sit_ups + 0.5
-                dir = 1
-                color = (0,255,0)
+        per_val1 = int(np.interp(a1, (50, 150), (100, 0)))
+        per_val2 = int(np.interp(a2, (50, 150), (100, 0)))
 
-        elif per == 0 :
-            if dir == 1 :
-                sit_ups = sit_ups + 0.5
-                dir = 0
-                color = (0,255,0)
+        bar_val1 = int(np.interp(per_val1, (0, 100), (40 + 350, 40)))
+        bar_val2 = int(np.interp(per_val2, (0, 100), (40 + 350, 40)))
+
+        cv2.rectangle(img, (1220, bar_val1), (1220 + 35, 40 + 350), color, cv2.FILLED)
+        cv2.rectangle(img, (1220, 40), (1220 + 35, 350 + 40), (), 3)
+        cvzone.putTextRect(img, f'{per_val1}%', (1210, 25), 1.1, 2, colorT=(255, 255, 255), colorR=(255, 0, 255),
+                           border=3, colorB=())
+
+        cv2.rectangle(img, (5, bar_val2), (5 + 35, 40 + 350), color, cv2.FILLED)
+        cv2.rectangle(img, (5, 40), (5 + 35, 40 + 350), (), 3)
+        cvzone.putTextRect(img, f'{per_val2}%', (15, 25), 1.1, 2, colorT=(255, 255, 255), colorR=(255, 0, 255),
+                           border=3, colorB=())
+
+        if per_val1 == 100:
+            if not right_rep_completed:
+                count += 1
+                count_right += 1
+                right_rep_completed = True
+                if left_rep_completed:
+                    color = (255, 192, 203)  # Pink
+                else:
+                    color = (255, 0, 255)  # Magenta
+        elif per_val1 == 0:
+            right_rep_completed = False
+            if not left_rep_completed:
+                color = (0, 0, 255)  # Blue
+
+        if per_val2 == 100:
+            if not left_rep_completed:
+                count += 1
+                count_left += 1
+                left_rep_completed = True
+                if right_rep_completed:
+                    color = (255, 192, 203)  # Pink
+                else:
+                    color = (255, 0, 255)  # Magenta
+        elif per_val2 == 0:
+            left_rep_completed = False
+            if not right_rep_completed:
+                color = (0, 0, 255)  # Blue
         else:
-              color = (0, 0, 255)
+            color = (255, 0, 255)  # Magenta
 
-        cvzone.putTextRect(img ,f'squats : {str(int(sit_ups))}',(40,40),2,2,colorT=(255,255,255),colorR=(255,0,0),border=3,colorB=())
-    cv2.imshow('situps-counter',img)
+        cvzone.putTextRect(img, f'count: {int(count)}', (508, 35), 2, 2, colorT=(255, 255, 255),
+                           colorR=(255, 0, 255), border=3, colorB=(0, 0, 0))
+        cvzone.putTextRect(img, f'left hand: {count_left}', (15, 40 + 400), 1.4, 2, colorT=(255, 255, 255),
+                           colorR=(100, 100, 200), border=3, colorB=(0, 0, 0))
+        cvzone.putTextRect(img, f'right hand: {count_right}', (1100, 40 + 400), 1.4, 2, colorT=(255, 255, 255),
+                           colorR=(100, 100, 200), border=3, colorB=(0, 0, 0))
+
+    ctime = time.time()
+    fps = 1 / (ctime - ptime)
+    ptime = ctime
+
+    cvzone.putTextRect(img, f'FPS: {int(fps)}', (560, 700), 2, 2, colorT=(255, 255, 255), colorR=(0, 135, 0),
+                       border=3, colorB=())
+    cv2.imshow("dumble", img)
+
     if cv2.waitKey(1) == ord('q'):
         break
 
-
-
-
-
-
+cv2.destroyAllWindows()
